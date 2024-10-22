@@ -1,5 +1,6 @@
 const dotenv = require("dotenv");
 
+
 let ENV_FILE_NAME = "";
 switch (process.env.NODE_ENV) {
   case "production":
@@ -23,17 +24,27 @@ try {
 
 // CORS when consuming Medusa from admin
 const ADMIN_CORS =
-  process.env.ADMIN_CORS || "https://circuithub.pk";
+  process.env.ADMIN_CORS || "https://admin.circuithub.pk";
 
 // CORS to avoid issues when consuming Medusa from a client
 const STORE_CORS = process.env.STORE_CORS || "https://circuithub.pk";
 
 // const DATABASE_URL = process.env.DATABASE_URL || "postgres://localhost/medusa-starter-default";
 
+
+const BACKEND_URL = "https://admin.circuithub.pk"
+
+const GoogleClientId = process.env.GOOGLE_CLIENT_ID || ""
+const GoogleClientSecret = process.env.GOOGLE_CLIENT_SECRET || ""
+
+
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres.qbatxyuuboxorqcludga:ecom@octa123@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres";
 
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+
+
+
 
 const plugins = [
   `medusa-fulfillment-manual`,
@@ -43,7 +54,7 @@ const plugins = [
     options: {
       upload_dir: "uploads",
       // base_url: "https://circuithub.pk/uploads",
-      backend_url: "https://circuithub.pk"
+      backend_url: "http://admin.circuithub.pk"
     },
   },
   {
@@ -51,7 +62,7 @@ const plugins = [
     /** @type {import('@medusajs/admin').PluginOptions} */
     options: {
       // autoRebuild: true,
-      backend_url: "https://circuithub.pk",
+      backend_url: "http://admin.circuithub.pk",
       develop: {
         // open: process.env.OPEN_BROWSER !== "false",
         admin_path: "/app",
@@ -61,21 +72,63 @@ const plugins = [
       },
     },
   },
+  {
+    resolve: "medusa-plugin-auth",
+    /** @type {import('medusa-plugin-auth').AuthOptions} */
+    options: [
+      {
+        type: "google",
+        // strict: "all", // or "none" or "store" or "admin"
+        strict: "none",
+        identifier: "google",
+        clientID: GoogleClientId,
+        clientSecret: GoogleClientSecret,
+        admin: {
+          callbackUrl: `${BACKEND_URL}/admin/auth/google/cb`,
+          failureRedirect: `${ADMIN_CORS}/login`,
+          successRedirect: `${ADMIN_CORS}/`
+
+        },
+        store: {
+          callbackUrl: `${BACKEND_URL}/store/auth/google/cb`,
+          failureRedirect: `${STORE_CORS}/login`,
+          successRedirect: `${STORE_CORS}/`
+
+        }
+      }
+    ]
+  },
+
+
+  {
+    resolve: "medusa-plugin-sendgrid",
+    options: {
+      api_key: process.env.SENDGRID_API_KEY || "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",
+      from: process.env.SENDGRID_FROM || "muhammadzeeshan@octathorn.com",
+      customer_password_reset_template: process.env.SENDGRID_CUSTOMER_PASSWORD_RESET_ID || "d-b43cd77e4ba041f890429b926e234c81", // Added for password reset
+      order_confirmation_template: process.env.SENDGRID_ORDER_CONFIRMATION_ID || "your-order-confirmation-template-id",
+    },
+  },
+
 ];
 
+
+
+
 const modules = {
-  /*eventBus: {
+  eventBus: {
     resolve: "@medusajs/event-bus-redis",
     options: {
       redisUrl: REDIS_URL
     }
   },
+
   cacheService: {
     resolve: "@medusajs/cache-redis",
     options: {
       redisUrl: REDIS_URL
     }
-  },*/
+  },
 };
 
 /** @type {import('@medusajs/medusa').ConfigModule["projectConfig"]} */
@@ -85,6 +138,12 @@ const projectConfig = {
   store_cors: STORE_CORS,
   database_url: DATABASE_URL,
   admin_cors: ADMIN_CORS,
+  database_extra: process.env.NODE_ENV !== "development" ?
+    {
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    } : {},
   // Uncomment the following lines to enable REDIS
   // redis_url: REDIS_URL
 };
@@ -97,4 +156,6 @@ module.exports = {
   projectConfig,
   plugins,
   modules,
+  // ...
+
 };
